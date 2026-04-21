@@ -1,0 +1,11 @@
+MODEL COMPARISON SUMMARY
+======================================================================
+              Model  Best Val F1 Test Precision Test Recall  Test F1 Training Time         Regularization
+           Original      0.90620         0.8505      0.9846   0.9062       ~15 min                   None
+Extended (Batch 32)      0.90100            N/A         N/A      N/A       ~25 min             Batch size
+        Regularized      0.91151       0.862067    0.983033  0.91151     ~8 epochs Dropout + Weight Decay
+
+Best Regularized F1: 0.9115
+Test Precision: 0.8621
+Test Recall: 0.9830
+Test F1: 0.9115

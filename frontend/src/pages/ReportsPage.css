@@ -1,0 +1,576 @@
+/* ══════════════════════════════════════════════════════════════
+   ReportsPage.css — Premium analytics, design-token aligned
+   ══════════════════════════════════════════════════════════════ */
+
+/* ─── Root layout ──────────────────────────────────────────── */
+.rp-root {
+  padding: 2rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-height: 100%;
+  background: var(--bg-base, #f8fafc);
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  color: var(--text-primary, #0f172a);
+}
+@media (max-width: 768px) {
+  .rp-root { padding: 1.25rem; gap: 1.25rem; }
+}
+
+/* ─── Page header ──────────────────────────────────────────── */
+.rp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.rp-title {
+  font-family: var(--font-display, 'Manrope', sans-serif);
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text-primary, #0f172a);
+  margin: 0 0 2px;
+}
+
+.rp-subtitle {
+  font-size: 0.8125rem;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+}
+
+.rp-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+}
+
+/* ─── Buttons ──────────────────────────────────────────────── */
+.rp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 1rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1.5px solid transparent;
+  white-space: nowrap;
+}
+.rp-btn:disabled { opacity: 0.4; cursor: not-allowed !important; }
+
+.rp-btn-ghost {
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  border-color: var(--border-light, #e2e8f0);
+}
+.rp-btn-ghost:hover:not(:disabled) {
+  background: var(--bg-surface, #fff);
+  color: var(--text-primary, #0f172a);
+}
+
+.rp-btn-outline {
+  background: var(--bg-surface, #fff);
+  color: var(--color-primary, #2563eb);
+  border-color: #bfdbfe;
+}
+.rp-btn-outline:hover:not(:disabled) {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+}
+
+.rp-btn-primary {
+  background: var(--color-primary, #2563eb);
+  color: #fff;
+  border-color: var(--color-primary, #2563eb);
+  box-shadow: 0 1px 3px rgba(37,99,235,.25);
+}
+.rp-btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37,99,235,.35);
+  transform: translateY(-1px);
+}
+
+/* ─── Filter bar ───────────────────────────────────────────── */
+.rp-filter-bar {
+  background: var(--bg-surface, #fff);
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  border-radius: 12px;
+  padding: 0.875rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.rp-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rp-filter-icon { color: var(--text-muted, #64748b); flex-shrink: 0; }
+.rp-filter-sep  { color: var(--text-muted, #64748b); font-size: 0.75rem; }
+
+.rp-date-input,
+.rp-select {
+  height: 34px;
+  padding: 0 0.75rem;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  background: var(--bg-muted, #f8fafc);
+  font-size: 0.8125rem;
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  color: var(--text-primary, #0f172a);
+  outline: none;
+  transition: border-color 0.15s;
+  cursor: pointer;
+}
+.rp-date-input:focus,
+.rp-select:focus {
+  border-color: var(--color-primary, #2563eb);
+  background: var(--bg-surface, #fff);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.08);
+}
+
+.rp-filter-count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  background: var(--bg-muted, #f8fafc);
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  padding: 3px 10px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+/* ─── Tab nav ──────────────────────────────────────────────── */
+.rp-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-muted, #f1f5f9);
+  border-radius: 10px;
+  padding: 4px;
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  width: fit-content;
+}
+
+.rp-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.rp-tab:hover { color: var(--text-primary, #0f172a); background: rgba(255,255,255,0.6); }
+
+.rp-tab-active {
+  background: var(--bg-surface, #fff);
+  color: var(--color-primary, #2563eb);
+  box-shadow: 0 1px 4px rgba(0,0,0,.10), 0 0 0 1px rgba(37,99,235,.12);
+}
+
+/* ─── KPI grid ─────────────────────────────────────────────── */
+.rp-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 1400px) { .rp-kpi-row { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px)  { .rp-kpi-row { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px)  { .rp-kpi-row { grid-template-columns: 1fr; } }
+
+.rp-kpi, .rp-kpi-card {
+  background: var(--bg-surface, #fff);
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  border-top: 3px solid var(--accent, #2563eb);
+  border-radius: 12px;
+  padding: 1.125rem 1.25rem 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+.rp-kpi:hover, .rp-kpi-card:hover {
+  box-shadow: 0 8px 24px rgba(0,0,0,.09), 0 2px 8px rgba(37,99,235,.08);
+  transform: translateY(-3px);
+}
+
+.rp-kpi-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--text-faint, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 6px;
+}
+.rp-kpi-value {
+  font-family: var(--font-display, 'Manrope', sans-serif);
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text-primary, #0f172a);
+  line-height: 1.1;
+}
+.rp-kpi-sub {
+  font-size: 0.6875rem;
+  color: var(--text-faint, #94a3b8);
+  margin-top: 4px;
+}
+
+/* ─── Charts section ───────────────────────────────────────── */
+.rp-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.rp-charts-row {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 1rem;
+}
+@media (max-width: 960px) { .rp-charts-row { grid-template-columns: 1fr; } }
+
+.rp-chart-card {
+  background: var(--bg-surface, #fff);
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.rp-chart-card-sm {
+  min-height: 260px;
+}
+
+.rp-chart-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  letter-spacing: -0.01em;
+}
+.rp-chart-title svg { color: var(--color-primary, #2563eb); }
+
+.rp-chart-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8125rem;
+  color: var(--text-faint, #94a3b8);
+}
+
+/* Recharts tooltip */
+.rp-tooltip {
+  background: var(--bg-surface, #fff);
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.10);
+  font-size: 0.8125rem;
+  min-width: 100px;
+}
+.rp-tooltip-label {
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ─── Table panel wrapper ──────────────────────────────────── */
+.rp-table-panel {
+  background: var(--bg-surface, #fff);
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  overflow: hidden;
+}
+
+/* ─── Table ────────────────────────────────────────────────── */
+.rp-table-wrap { overflow-x: auto; }
+
+.rp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.rp-table thead tr {
+  background: var(--bg-muted, #f8fafc);
+  border-bottom: 2px solid var(--border-light, #e2e8f0);
+}
+
+.rp-table th {
+  padding: 11px 16px;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--text-faint, #94a3b8);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rp-th-sort {
+  cursor: pointer;
+  user-select: none;
+  display: flex !important;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.15s;
+}
+.rp-th-sort:hover { color: var(--color-primary, #2563eb); }
+
+.rp-tr {
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
+  transition: background 0.12s;
+}
+.rp-tr:last-child { border-bottom: none; }
+.rp-tr:hover { background: #f8faff; }
+
+.rp-table td {
+  padding: 11px 16px;
+  color: var(--text-secondary, #475569);
+  vertical-align: middle;
+  max-width: 0;
+}
+
+/* Column utilities */
+.rp-td-mono {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  white-space: nowrap;
+}
+.rp-td-reason {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rp-td-muted { color: var(--text-faint, #94a3b8); font-size: 0.75rem; margin-left: 4px; }
+
+/* ─── Status badge ─────────────────────────────────────────── */
+.rp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.rp-badge-pass { background: #dcfce7; color: #15803d; }
+.rp-badge-fail { background: #fee2e2; color: #b91c1c; }
+.rp-badge-unc  { background: #fef3c7; color: #92400e; }
+
+/* ─── Confidence bar ───────────────────────────────────────── */
+.rp-conf-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 100px;
+}
+.rp-conf-track {
+  flex: 1;
+  height: 5px;
+  background: var(--border-light, #e2e8f0);
+  border-radius: 99px;
+  overflow: hidden;
+  min-width: 56px;
+}
+.rp-conf-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+.rp-conf-cell > span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  min-width: 34px;
+  text-align: right;
+}
+
+/* ─── Chips ────────────────────────────────────────────────── */
+.rp-product-chip {
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rp-source-chip {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  background: var(--bg-muted, #f1f5f9);
+  color: var(--text-muted, #64748b);
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.rp-source-chip--mobile { background: #dbeafe; color: #1d4ed8; }
+
+.rp-batch-id {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  background: var(--bg-muted, #f1f5f9);
+  color: var(--text-secondary, #475569);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.rp-event-chip {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 3px 9px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* ─── Batch download buttons ───────────────────────────────── */
+.rp-dl-group { display: flex; gap: 4px; }
+.rp-dl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  background: var(--bg-surface, #fff);
+  color: var(--text-muted, #64748b);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.rp-dl-btn:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+/* ─── Pagination ───────────────────────────────────────────── */
+.rp-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1.5px solid var(--border-light, #e2e8f0);
+  background: var(--bg-muted, #f8fafc);
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.rp-page-info {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  font-weight: 600;
+}
+
+.rp-page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  background: var(--bg-surface, #fff);
+  color: var(--text-secondary, #475569);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.rp-page-btn:hover:not(:disabled) {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+.rp-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ─── Empty state ──────────────────────────────────────────── */
+.rp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 4.5rem 2rem;
+  color: var(--text-faint, #94a3b8);
+  font-size: 0.875rem;
+  text-align: center;
+}
+.rp-empty-icon  { font-size: 2.5rem; line-height: 1; }
+.rp-empty-title { font-size: 1rem; font-weight: 700; color: var(--text-secondary, #475569); }
+.rp-empty-sub   { font-size: 0.8125rem; color: var(--text-muted, #64748b); max-width: 280px; }
+
+/* ─── Loading spinner ──────────────────────────────────────── */
+.rp-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 4rem;
+  color: var(--text-muted, #64748b);
+  font-size: 0.875rem;
+}
+.rp-loading-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid var(--border-light, #e2e8f0);
+  border-top-color: var(--color-primary, #2563eb);
+  border-radius: 50%;
+  animation: rp-spin 0.8s linear infinite;
+}
+
+/* ─── Spin animation ───────────────────────────────────────── */
+.rp-spin { animation: rp-spin 1s linear infinite; }
+@keyframes rp-spin {
+  to { transform: rotate(360deg); }
+}

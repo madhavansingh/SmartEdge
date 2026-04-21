@@ -1,0 +1,17 @@
+.skeleton-loader {
+  background: linear-gradient(90deg, var(--color-panel) 25%, rgba(30, 41, 59, 0.8) 50%, var(--color-panel) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite ease-in-out;
+  border-radius: var(--radius-sm);
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

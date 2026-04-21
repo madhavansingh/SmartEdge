@@ -1,0 +1,15 @@
+{
+  "total_images": 500,
+  "total_defects": 3140,
+  "avg_defects_per_image": 6.28,
+  "defect_distribution": {
+    "open": "most common",
+    "copper": "least common",
+    "imbalance_ratio": 1.42
+  },
+  "num_classes": 6,
+  "image_size": [
+    640,
+    640
+  ]
+}

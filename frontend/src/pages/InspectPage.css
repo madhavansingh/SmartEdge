@@ -1,0 +1,661 @@
+/* ═══════════════════════════════════════════════════════════
+   InspectPage.css — Premium Industrial Inspection UI
+   Full design-token pass — no hardcoded hex values
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─ Root ─────────────────────────────────────────────────── */
+.ip-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+/* ─ Header ───────────────────────────────────────────────── */
+.ip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) 28px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  box-shadow: var(--shadow-xs);
+}
+
+.ip-header-left { display: flex; flex-direction: column; gap: 2px; }
+
+.ip-title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.ip-subtitle {
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+}
+
+.ip-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.ip-select {
+  background: var(--bg-base);
+  border: 1.5px solid var(--border-light);
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+.ip-select:focus { border-color: var(--border-focus); }
+
+/* ─ Buttons ──────────────────────────────────────────────── */
+.ip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  border: 1.5px solid var(--border-light);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+}
+.ip-btn:hover:not(:disabled) {
+  border-color: var(--blue-300);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
+}
+.ip-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.ip-btn-live {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--text-inverse);
+}
+.ip-btn-live:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  box-shadow: var(--shadow-blue);
+}
+
+.ip-btn-stop {
+  background: var(--status-fail-bg);
+  border-color: #fecaca;
+  color: var(--status-fail-text);
+}
+.ip-btn-stop:hover:not(:disabled) {
+  background: #fee2e2;
+  box-shadow: 0 0 0 3px rgba(239,68,68,.07);
+}
+
+.ip-btn-sm { padding: 7px 10px; }
+
+.ip-btn-demo {
+  background: var(--status-warn-bg);
+  border-color: #fde68a;
+  color: var(--status-warn-text);
+}
+
+/* ─ Body grid ────────────────────────────────────────────── */
+.ip-body {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: var(--space-5);
+  padding: var(--space-5) 28px;
+  flex: 1;
+  min-height: 0;
+}
+@media (max-width: 960px) {
+  .ip-body { grid-template-columns: 1fr; padding: var(--space-4); }
+}
+
+/* ─ Left panel ───────────────────────────────────────────── */
+.ip-cam-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Tabs */
+.ip-tab-strip {
+  display: flex;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-base);
+}
+
+.ip-tab {
+  flex: 1;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: color var(--duration-fast), background var(--duration-fast);
+  border-bottom: 2px solid transparent;
+}
+.ip-tab:hover { color: var(--blue-500); }
+.ip-tab-active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background: var(--bg-surface);
+}
+
+/* Camera header inside panel */
+.ip-cam-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.ip-cam-label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+}
+
+.ip-live-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--status-fail);
+  box-shadow: 0 0 6px rgba(239,68,68,.53);
+  animation: ip-pulse-dot 1.2s infinite;
+}
+@keyframes ip-pulse-dot {
+  0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+}
+
+.ip-cam-actions { display: flex; align-items: center; gap: 8px; }
+
+/* Camera viewport */
+.ip-cam-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: var(--bg-muted);
+  overflow: hidden;
+  flex: 1;
+  min-height: 260px;
+}
+
+.ip-video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Corner bracket overlay (live mode) */
+.ip-scan-overlay {
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+.ip-corner {
+  position: absolute;
+  width: 24px; height: 24px;
+  border-color: var(--blue-500);
+  border-style: solid;
+}
+.ip-corner-tl { top: 16px; left: 16px; border-width: 2px 0 0 2px; border-radius: 3px 0 0 0; }
+.ip-corner-tr { top: 16px; right: 16px; border-width: 2px 2px 0 0; border-radius: 0 3px 0 0; }
+.ip-corner-bl { bottom: 16px; left: 16px; border-width: 0 0 2px 2px; border-radius: 0 0 0 3px; }
+.ip-corner-br { bottom: 16px; right: 16px; border-width: 0 2px 2px 0; border-radius: 0 0 3px 0; }
+
+/* Scan line */
+.ip-scan-line {
+  position: absolute; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--blue-500), transparent);
+  animation: ip-scan 2s linear infinite;
+  z-index: 2;
+}
+@keyframes ip-scan {
+  0%   { top: 0%; }
+  100% { top: 100%; }
+}
+
+/* Status chip */
+.ip-cam-status-chip {
+  position: absolute;
+  bottom: 12px; right: 12px;
+  background: rgba(255,255,255,.9);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  backdrop-filter: blur(6px);
+}
+
+/* Hints overlay */
+.ip-hints {
+  position: absolute;
+  bottom: 12px; left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ip-hints span {
+  font-size: 0.62rem;
+  letter-spacing: 0.07em;
+  color: rgba(100,116,139,.8);
+  font-family: var(--font-mono);
+}
+
+/* Empty camera placeholder */
+.ip-cam-empty {
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-faint);
+}
+.ip-cam-empty-icon { color: var(--border-normal); }
+.ip-cam-empty span:first-of-type {
+  font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.08em; font-family: var(--font-mono);
+}
+.ip-cam-empty-sub {
+  font-size: var(--text-xs); color: var(--text-faint); font-family: var(--font-mono); letter-spacing: 0.04em;
+}
+
+/* ─ Upload panel ─────────────────────────────────────────── */
+.ip-upload-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--space-4);
+}
+
+.ip-dropzone {
+  border: 2px dashed var(--border-normal);
+  border-radius: var(--radius-md);
+  background: var(--bg-base);
+  aspect-ratio: 4/3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color var(--duration-fast), background var(--duration-fast);
+  position: relative;
+  overflow: hidden;
+}
+.ip-dropzone:hover { border-color: var(--blue-300); background: var(--blue-50); }
+.ip-dropzone-active { border-color: var(--blue-500); background: var(--blue-50); }
+.ip-dropzone-has-file { cursor: default; border-style: solid; border-color: var(--border-light); }
+
+.ip-dropzone-inner {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: var(--text-faint); text-align: center;
+}
+.ip-dropzone-icon { color: var(--border-normal); }
+.ip-dropzone-title {
+  font-size: var(--text-sm); font-weight: 700; letter-spacing: 0.06em; font-family: var(--font-mono);
+}
+.ip-dropzone-sub { font-size: var(--text-xs); letter-spacing: 0.03em; color: var(--text-faint); font-family: var(--font-mono); }
+
+.ip-upload-preview {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
+.ip-upload-error {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--status-fail-bg); border: 1px solid #fecaca;
+  border-radius: var(--radius-sm); padding: 8px 12px;
+  font-size: var(--text-xs); color: var(--status-fail-text); font-family: var(--font-mono);
+}
+
+.ip-upload-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.ip-upload-meta {
+  display: flex; justify-content: space-between;
+  font-size: var(--text-xs); color: var(--text-faint); font-family: var(--font-mono);
+  background: var(--bg-base); border: 1px solid var(--border-light);
+  border-radius: var(--radius-xs); padding: 6px 10px;
+}
+
+/* ─ Right panel ──────────────────────────────────────────── */
+.ip-data-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Result card */
+.ip-result-card {
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  flex: 1;
+}
+
+.ip-result-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: var(--bg-muted);
+  border-bottom: 1.5px solid var(--border-light);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+}
+
+.ip-status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block;
+}
+.ip-status-dot.pass      { background: var(--status-pass); box-shadow: 0 0 6px rgba(34,197,94,.4); }
+.ip-status-dot.fail      { background: var(--status-fail); box-shadow: 0 0 6px rgba(239,68,68,.4); }
+.ip-status-dot.uncertain { background: var(--status-warn); box-shadow: 0 0 6px rgba(245,158,11,.4); }
+
+/* Loading state */
+.ip-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 48px 24px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-family: var(--font-mono);
+}
+
+.ip-pulse {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border-light);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: ip-spin .7s linear infinite;
+}
+@keyframes ip-spin { to { transform: rotate(360deg); } }
+
+.ip-pulse-sm {
+  width: 12px; height: 12px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: var(--text-inverse);
+  border-radius: 50%;
+  animation: ip-spin .7s linear infinite;
+}
+
+/* Empty state */
+.ip-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 24px;
+  color: var(--border-normal);
+}
+.ip-empty-icon { color: var(--border-light); }
+.ip-empty span:first-of-type { font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.08em; font-family: var(--font-mono); }
+.ip-empty-sub { font-size: var(--text-xs); color: var(--text-faint); font-family: var(--font-mono); text-align: center; }
+
+/* Result body */
+.ip-result-body { padding: 20px 18px; display: flex; flex-direction: column; gap: 16px; }
+
+/* Big status badge */
+.ip-badge {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 22px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  border: 1.5px solid transparent;
+}
+.ip-badge-pass      { background: var(--status-pass-bg);  color: var(--status-pass-text);  border-color: rgba(34,197,94,.25); }
+.ip-badge-fail      { background: var(--status-fail-bg);  color: var(--status-fail-text);  border-color: rgba(239,68,68,.25); }
+.ip-badge-uncertain { background: var(--status-warn-bg);  color: var(--status-warn-text);  border-color: rgba(245,158,11,.25); }
+.ip-badge-label { font-size: 1.6rem; font-weight: 900; letter-spacing: -0.03em; }
+
+/* Details table */
+.ip-details { display: flex; flex-direction: column; gap: 0; }
+.ip-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--bg-muted);
+  font-family: var(--font-mono);
+}
+.ip-detail-row:last-child { border-bottom: none; }
+.ip-detail-label {
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.ip-detail-value { font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); }
+
+/* Confidence bar */
+.ip-conf-bar-wrap {
+  height: 6px;
+  background: var(--bg-muted);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+.ip-conf-bar { height: 100%; border-radius: var(--radius-full); }
+.ip-conf-bar-pass      { background: linear-gradient(90deg, #4ade80, var(--status-pass)); }
+.ip-conf-bar-fail      { background: linear-gradient(90deg, #f87171, var(--status-fail)); }
+.ip-conf-bar-uncertain { background: linear-gradient(90deg, #fbbf24, var(--status-warn)); }
+
+/* Reason */
+.ip-reason {
+  font-size: var(--text-sm);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  line-height: 1.55;
+  font-family: var(--font-mono);
+  letter-spacing: 0.01em;
+}
+.ip-reason-pass      { background: #f0fdf4; color: var(--status-pass-text); }
+.ip-reason-fail      { background: var(--status-fail-bg); color: var(--status-fail-text); }
+.ip-reason-uncertain { background: var(--status-warn-bg); color: var(--status-warn-text); }
+
+/* ─ System Diagnostics panel ─────────────────────────────── */
+.ip-diagnostics {
+  background: var(--color-primary-light);
+  border: 1.5px solid var(--color-primary-mid);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.ip-diagnostics-header {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ip-diagnostics-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--color-primary-mid);
+  font-family: var(--font-mono);
+}
+.ip-diagnostics-row:last-child { border-bottom: none; }
+.ip-diag-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.ip-diag-value {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+.ip-diag-value--good { color: var(--status-pass-text); }
+.ip-diag-value--warn { color: var(--status-warn-text); }
+.ip-diag-value--bad  { color: var(--status-fail-text); }
+
+/* Meta */
+.ip-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  padding-top: 4px;
+  border-top: 1px solid var(--border-light);
+}
+.ip-meta span { display: flex; align-items: center; gap: 4px; }
+
+/* Actions */
+.ip-actions { display: flex; gap: 8px; padding-top: 4px; }
+
+/* ─ Batch controls ───────────────────────────────────────── */
+.ip-batch-info {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--color-primary-light);
+  border: 1px solid var(--blue-200);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--blue-700);
+}
+.ip-batch-id { font-weight: 700; letter-spacing: 0.05em; }
+.ip-batch-stats { color: var(--blue-400); }
+
+.ip-input {
+  background: var(--bg-base);
+  border: 1.5px solid var(--border-light);
+  color: var(--text-secondary);
+  padding: 7px 10px;
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  outline: none;
+  width: 110px;
+}
+.ip-input:focus { border-color: var(--border-focus); }
+
+/* ─ History panel ────────────────────────────────────────── */
+.ip-history {
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.ip-history-header {
+  padding: 12px 16px;
+  background: var(--bg-muted);
+  border-bottom: 1.5px solid var(--border-light);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+}
+
+.ip-history-list { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.ip-history-empty { font-size: var(--text-xs); color: var(--text-faint); text-align: center; padding: 20px; margin: 0; font-family: var(--font-mono); }
+
+.ip-hist-item {
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid transparent;
+  background: var(--bg-base);
+  transition: background var(--duration-fast);
+}
+.ip-hist-item:hover { background: var(--bg-muted); }
+.ip-hist-item.pass      { border-left-color: var(--status-pass); }
+.ip-hist-item.fail      { border-left-color: var(--status-fail); }
+.ip-hist-item.uncertain { border-left-color: var(--status-warn); }
+
+.ip-hist-top {
+  display: flex; justify-content: space-between;
+  font-size: var(--text-xs); color: var(--text-faint); margin-bottom: 3px; font-family: var(--font-mono);
+}
+.ip-hist-id { font-weight: 700; letter-spacing: 0.04em; }
+.ip-hist-time { color: var(--border-normal); }
+
+.ip-hist-bottom { display: flex; gap: 8px; align-items: center; font-family: var(--font-mono); }
+
+.ip-hist-status { font-size: var(--text-xs); font-weight: 900; letter-spacing: 0.06em; }
+.ip-hist-status.pass      { color: var(--status-pass-text); }
+.ip-hist-status.fail      { color: var(--status-fail-text); }
+.ip-hist-status.uncertain { color: var(--status-warn-text); }
+
+.ip-hist-obj  { font-size: var(--text-xs); color: var(--text-muted); letter-spacing: 0.03em; }
+.ip-hist-flag { font-size: 0.65rem; background: var(--status-fail-bg); color: var(--status-fail-text); border-radius: var(--radius-xs); padding: 1px 5px; font-weight: 700; }
+
+/* ─ Mono text ─────────────────────────────────────────────── */
+.text-mono { font-family: var(--font-mono); }

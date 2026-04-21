@@ -1,0 +1,100 @@
+# ═══════════════════════════════════════════════════════════
+#  SmartEdge — .gitignore
+#  Covers: Python (FastAPI), Vite/React, ML models, OS files
+# ═══════════════════════════════════════════════════════════
+
+# ── Secret / environment files ────────────────────────────
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+# keep example templates — must come AFTER the ignore rules above
+!.env.example
+*.pem
+*.key
+*.p12
+secrets.json
+credentials.json
+
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+.venv/
+venv/
+env/
+.env/
+ENV/
+.python-version
+
+# ── ML models & large binary assets ──────────────────────
+*.pt
+*.pth
+*.onnx
+*.h5
+*.pb
+*.tflite
+*.pkl
+*.joblib
+backend/models/*.pt
+backend/models/*.pth
+backend/models/*.onnx
+
+# ── Node / Vite / React ───────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/build/
+.npm
+*.tsbuildinfo
+
+# ── OS & editor junk ─────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# ── Logs ─────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Testing & coverage ───────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+*.cover
+
+# ── Jupyter ──────────────────────────────────────────────
+.ipynb_checkpoints
+*.ipynb
+
+# ── Misc ─────────────────────────────────────────────────
+*.csv
+!*.example.csv
+*.zip
+*.tar.gz
+tmp/
+temp/
