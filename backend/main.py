@@ -15,7 +15,7 @@ except Exception:
     ssl._create_default_https_context = ssl._create_unverified_context
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -80,6 +80,7 @@ from services.automotive_service import automotive_service
 from services.gemini_vision_service import gemini_vision_service
 from services.domain_classifier import classify_domain
 from services import decision_engine
+from services.alert_service import check_and_alert, get_alert_log, send_email_alert, force_alert
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -324,11 +325,28 @@ _scan_store: list = []   # list[dict]  — newest first
 MAX_SCANS   = 2000       # cap to prevent unbounded growth
 
 
-def _append_scan(record: dict) -> None:
+# ── Current authenticated user helper (best-effort) ─────────────────────────
+# Filled in by the auth layer when a JWT is present.
+_current_user_store: dict[str, dict] = {}   # token_hex → {email, name}
+
+
+def _append_scan(record: dict, user_email: str = "") -> None:
     with _scan_lock:
         _scan_store.insert(0, record)
         if len(_scan_store) > MAX_SCANS:
             del _scan_store[MAX_SCANS:]
+        # Take a snapshot for alert checking (avoid holding lock during I/O)
+        snap = list(_scan_store[:60])
+
+    # Check alert conditions outside the lock (non-blocking)
+    if user_email:
+        import threading
+        threading.Thread(
+            target=check_and_alert,
+            args=(snap, user_email),
+            kwargs={"user_id": user_email},
+            daemon=True,
+        ).start()
 
 
 @app.post("/report-scan")
@@ -348,8 +366,61 @@ async def report_scan(payload: dict):
         "processing_time_ms": float(payload.get("processing_time_ms") or 0.0),
         "model_name":         str(payload.get("model_name") or "CV-Pipeline"),
     }
-    _append_scan(record)
+    _append_scan(record, user_email=str(payload.get("user_email", "")))
     return {"ok": True, "stored": len(_scan_store)}
+
+
+@app.get("/alert-status")
+async def alert_status():
+    """
+    Returns the most recent alert log entries.
+    Frontend polls this to display the alert badge and log.
+    """
+    return {"alerts": get_alert_log()}
+
+
+@app.post("/test-email")
+async def test_email(payload: dict = {}):
+    """
+    Immediately send a test alert email to verify SMTP credentials.
+    Body (optional): { "to": "target@email.com" }
+    Returns: { ok, message, smtp_email, smtp_configured }
+    """
+    import os
+    smtp_email    = os.getenv("SMTP_EMAIL", "")
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    smtp_host     = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port     = os.getenv("SMTP_PORT", "587")
+
+    to_email = payload.get("to") or smtp_email
+    if not to_email:
+        return {"ok": False, "message": "No target email. Set SMTP_EMAIL in .env or pass 'to' in body."}
+
+    if not smtp_email or not smtp_password:
+        return {
+            "ok":   False,
+            "message": "SMTP_EMAIL or SMTP_PASSWORD not set in backend/.env",
+            "smtp_email": smtp_email,
+            "smtp_configured": False,
+        }
+
+    # Build test scan data
+    fake_scans = [
+        {"status": "FAIL", "confidence": 0.95, "product_type": "PCB",
+         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+         "reason": "Test alert — SMTP credentials verified"},
+    ] * 5
+
+    ok = send_email_alert(to_email, fake_scans, "PCB")
+    return {
+        "ok":              ok,
+        "message":         "✅ Email sent successfully!" if ok else "❌ Email failed — check backend logs for SMTP error details",
+        "smtp_email":      smtp_email,
+        "smtp_host":       smtp_host,
+        "smtp_port":       smtp_port,
+        "smtp_configured": bool(smtp_email and smtp_password),
+        "sent_to":         to_email,
+    }
 
 
 @app.get("/scans")
@@ -773,17 +844,16 @@ Recent scans (newest first):
 
 User question: {question}"""
 
-    # ── Call Gemini (run in executor so we don't block the async event loop) ──
+    # ── Call Gemini via key pool (run in executor so we don’t block async loop) ──
     try:
-        from google import genai as _genai
-        api_key = os.getenv("GEMINI_API_KEY", "")
-        if not api_key:
-            return {"answer": "Assistant unavailable — API key not configured."}
+        from services.gemini_key_pool import gemini_key_pool
 
-        client = _genai.Client(api_key=api_key)
+        ck = gemini_key_pool.get_client()
+        if ck is None:
+            return {"answer": "Assistant unavailable — all Gemini API keys are quota-limited. Try again shortly."}
 
         def _sync_gemini():
-            return client.models.generate_content(
+            return ck.client.models.generate_content(
                 model="gemini-2.0-flash",
                 contents=system_prompt,
             )
@@ -794,23 +864,25 @@ User question: {question}"""
                 loop.run_in_executor(None, _sync_gemini),
                 timeout=25.0,
             )
+            ck.mark_ok()
         except asyncio.TimeoutError:
             log.warning("[chat] Gemini call timed out")
             return {"answer": "The assistant took too long to respond. Please try again."}
 
         answer = (response.text or "").strip()
         if not answer:
-            return {"answer": "I couldn't generate a response. Please try again."}
+            return {"answer": "I couldn’t generate a response. Please try again."}
         log.info("[chat] answered (%d chars)", len(answer))
         return {"answer": answer}
 
     except Exception as e:
         err = str(e).lower()
         log.error("[chat] Gemini exception: %s", e, exc_info=True)
-        if "quota" in err or "rate" in err or "resource exhausted" in err or "429" in err:
-            return {"answer": "Gemini quota reached. Please wait a moment and try again."}
+        if gemini_key_pool.is_quota_error(e):
+            # Mark the key that just failed and suggest retry
+            return {"answer": "Gemini quota reached on all keys. Please wait a moment and try again."}
         if "api key" in err or "permission" in err or "403" in err or "invalid" in err:
-            return {"answer": "Assistant unavailable — check your GEMINI_API_KEY in backend/.env."}
+            return {"answer": "Assistant unavailable — check your GEMINI_API_KEY_1…N in backend/.env."}
         return {"answer": f"Assistant error: {str(e)[:150]}"}
 
 
@@ -1360,6 +1432,9 @@ _mobile_sessions: dict[str, dict] = {}
 _MOBILE_SESSION_TTL = 300   # seconds — expire after 5 min of inactivity
 MOBILE_RATE_SEC     = 2.5   # minimum gap between frames per session
 
+# WebSocket connections per session  {sessionId: set[WebSocket]}
+_ws_connections: dict[str, set] = {}
+
 
 def _mobile_cleanup():
     """Remove sessions idle for > TTL seconds."""
@@ -1370,10 +1445,10 @@ def _mobile_cleanup():
         del _mobile_sessions[sid]
         log.info("[mobile] session expired: %s", sid)
 
-
 # ── POST /mobile-session/create ─────────────────────────────────────────────
 class MobileSessionCreate(BaseModel):
     product_type: str = "PCB"
+    user_email:   str = ""     # passed from laptop so alerts can be emailed
 
 @app.post("/mobile-session/create")
 async def mobile_session_create(payload: MobileSessionCreate):
@@ -1385,10 +1460,71 @@ async def mobile_session_create(payload: MobileSessionCreate):
         "ts":           time.time(),
         "rate_last":    0.0,
         "product_type": payload.product_type,
+        "user_email":   payload.user_email,
         "frame_count":  0,
     }
-    log.info("[mobile] session created: %s (product=%s)", session_id, payload.product_type)
+    log.info("[mobile] session created: %s (product=%s email=%s)",
+             session_id, payload.product_type, payload.user_email or "<none>")
     return {"session_id": session_id, "product_type": payload.product_type}
+
+
+# ── WS /ws/{session_id} ───────────────────────────────────────────────────────
+@app.websocket("/ws/{session_id}")
+async def mobile_ws(websocket: WebSocket, session_id: str):
+    """
+    Laptop connects here after creating a session.
+    Results are pushed instantly when mobile_frame processes a frame.
+    Sends a ping every 15 s to keep the connection alive through proxies/ngrok.
+    """
+    await websocket.accept()
+    _ws_connections.setdefault(session_id, set()).add(websocket)
+    log.info("[ws:%s] client connected (total=%d)", session_id[:8],
+             len(_ws_connections[session_id]))
+
+    try:
+        # Send current state immediately so the laptop knows it's live
+        session = _mobile_sessions.get(session_id)
+        if session:
+            await websocket.send_json({
+                "type":         "connected",
+                "session_id":   session_id,
+                "product_type": session["product_type"],
+                "frame_count":  session.get("frame_count", 0),
+            })
+
+        # Keep alive — send a ping every 15 s, wait for any message
+        # (the client ignores ping payloads; it just stays open)
+        while True:
+            try:
+                # wait up to 15 s for an incoming message (not expected but harmless)
+                await asyncio.wait_for(websocket.receive_text(), timeout=15.0)
+            except asyncio.TimeoutError:
+                # No message — send ping to keep proxy alive
+                await websocket.send_json({"type": "ping"})
+
+    except WebSocketDisconnect:
+        log.info("[ws:%s] client disconnected", session_id[:8])
+    except Exception as exc:
+        log.warning("[ws:%s] connection error: %s", session_id[:8], exc)
+    finally:
+        _ws_connections.get(session_id, set()).discard(websocket)
+        if not _ws_connections.get(session_id):
+            _ws_connections.pop(session_id, None)
+
+
+async def _ws_push(session_id: str, payload: dict) -> None:
+    """Push payload JSON to all laptop WebSocket clients for this session."""
+    conns = _ws_connections.get(session_id)
+    if not conns:
+        return
+    dead = set()
+    for ws in conns:
+        try:
+            await ws.send_json(payload)
+        except Exception:
+            dead.add(ws)
+    for ws in dead:
+        conns.discard(ws)
 
 
 # ── GET /mobile-result/{session_id} ────────────────────────────────────────
@@ -1559,11 +1695,23 @@ async def mobile_frame(payload: MobileFramePayload):
             "source":             "mobile",
             "processing_time_ms": _mobile_elapsed_ms,
             "model_name":         result.get("model_name", "CV-Pipeline"),
-        })
+        }, user_email=session.get("user_email", ""))
 
         log.info("[mobile:%s] frame=%d status=%s conf=%.2f",
                  payload.session_id[:8], session["frame_count"],
                  result.get("status"), result.get("confidence", 0))
+
+        # ── Push result instantly to laptop via WebSocket ────────────────────
+        await _ws_push(payload.session_id, {
+            "type":         "result",
+            "frame":        session["frame_count"],
+            "status":       result.get("status"),
+            "confidence":   result.get("confidence", 0.0),
+            "reason":       result.get("reason", ""),
+            "product":      result.get("product_type", product_type),
+            "timestamp":    result["timestamp"],
+            "quality_score": result.get("quality_score", 0.0),
+        })
 
         # Return full result so the phone can display confidence + reason
         return {

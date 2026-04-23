@@ -2,17 +2,16 @@
  * MobileQRPanel.jsx
  *
  * Shows a QR code for the current mobile session.
- * Uses Google Charts API to generate the QR SVG — no extra npm dep needed.
- * The laptop polls /mobile-result/{sessionId} every 1.5 s and surfaces
- * results to the parent InspectPage via the onResult callback.
+ * Primary transport: WebSocket (/ws/{sessionId}) — results pushed <100ms.
+ * Fallback: HTTP polling every 2s if WebSocket unavailable/fails.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import QRCode from 'qrcode';
 
 // All laptop→backend API calls go through Vite's dev-server proxy (/api → localhost:8000)
-const API_BASE = '/api';
-const POLL_MS  = 1500;
+const API_BASE  = '/api';
+const POLL_MS   = 2000;   // fallback polling interval (only used if WS fails)
 
 /**
  * Fetches the server's real LAN IP dynamically via /api/server-info.
@@ -113,39 +112,58 @@ function StatusBadge({ status }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function MobileQRPanel({ productType = 'PCB', onResult, onClose }) {
-  const [phase, setPhase]       = useState('creating');   // creating | waiting | connected | expired
-  const [sessionId, setSessionId] = useState(null);
-  const [mobileUrl, setMobileUrl] = useState('');
+export default function MobileQRPanel({ productType = 'PCB', onResult, onClose, userEmail = '' }) {
+  const [phase, setPhase]           = useState('creating');
+  const [sessionId, setSessionId]   = useState(null);
+  const [mobileUrl, setMobileUrl]   = useState('');
   const [frameCount, setFrameCount] = useState(0);
   const [lastResult, setLastResult] = useState(null);
-  const [errMsg, setErrMsg]     = useState('');
+  const [errMsg, setErrMsg]         = useState('');
+  const [transport, setTransport]   = useState('ws');   // 'ws' | 'poll'
 
-  const pollRef  = useRef(null);
+  const wsRef        = useRef(null);
+  const pollRef      = useRef(null);
   const prevFrameRef = useRef(0);
+  const sidRef       = useRef(null);   // stable ref for cleanup callbacks
+
+  // ── Handle incoming result (shared between WS and poll paths) ─────────────
+  const handleResult = useCallback((data) => {
+    const fc = data.frame || data.frame_count || 0;
+    if (fc > 0 && fc !== prevFrameRef.current) {
+      prevFrameRef.current = fc;
+      setFrameCount(fc);
+      setPhase('connected');
+      const result = data.result || data;   // WS sends flat; poll wraps in {result}
+      if (result.status) {
+        setLastResult(result);
+        onResult?.(result);
+      }
+    } else if (data.frame_count > 0 || data.connected) {
+      setPhase('connected');
+    }
+  }, [onResult]);
 
   // ── Create session on mount ───────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        // Fetch session + LAN base URL in parallel for speed
         const [sessionRes, baseUrl] = await Promise.all([
           fetch(`${API_BASE}/mobile-session/create`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ product_type: productType }),
+            body: JSON.stringify({ product_type: productType, user_email: userEmail }),
           }),
           getLanBaseUrl(),
         ]);
         const data = await sessionRes.json();
         if (cancelled) return;
         const sid = data.session_id;
+        sidRef.current = sid;
         setSessionId(sid);
-        // Use the dynamically resolved LAN base URL so phone can always reach us
         setMobileUrl(`${baseUrl}/mobile/${sid}`);
         setPhase('waiting');
-      } catch (e) {
+      } catch {
         if (!cancelled) {
           setErrMsg('Could not reach backend. Make sure the server is running.');
           setPhase('error');
@@ -155,40 +173,92 @@ export default function MobileQRPanel({ productType = 'PCB', onResult, onClose }
     return () => { cancelled = true; };
   }, [productType]);
 
-  // ── Poll for results ──────────────────────────────────────────────────────
+  // ── WebSocket connection (primary transport) ───────────────────────────────
   useEffect(() => {
-    if (!sessionId || phase === 'creating' || phase === 'expired') return;
+    if (!sessionId || phase === 'creating' || phase === 'expired' || phase === 'error') return;
 
-    pollRef.current = setInterval(async () => {
-      try {
-        const res  = await fetch(`${API_BASE}/mobile-result/${sessionId}`);
-        if (res.status === 404) {
-          setPhase('expired');
-          clearInterval(pollRef.current);
-          return;
+    let ws;
+    let fallbackTimer;
+    let dead = false;
+
+    const connect = () => {
+      // Build WS URL — use same host so Vite proxy handles it
+      const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const wsUrl = `${proto}://${window.location.host}/ws/${sessionId}`;
+
+      ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      // Give WS 4 seconds to connect; if not, fall back to polling
+      fallbackTimer = setTimeout(() => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          console.warn('[MobileQRPanel] WS not open after 4s — switching to polling');
+          ws.close();
+          startPolling();
         }
-        const data = await res.json();
-        const fc = data.frame_count || 0;
+      }, 4000);
 
-        // Switch to connected as soon as backend marks it (or frame_count > 0)
-        if (data.connected || fc > 0) {
-          setPhase('connected');
-        }
+      ws.onopen = () => {
+        clearTimeout(fallbackTimer);
+        setTransport('ws');
+        console.info('[MobileQRPanel] WebSocket connected');
+      };
 
-        // Surface new result only when frame count advances
-        if (fc > 0 && fc !== prevFrameRef.current) {
-          prevFrameRef.current = fc;
-          setFrameCount(fc);
-          if (data.result) {
-            setLastResult(data.result);
-            onResult?.(data.result);   // bubble up to InspectPage
+      ws.onmessage = (evt) => {
+        try {
+          const msg = JSON.parse(evt.data);
+          if (msg.type === 'ping') return;   // server keep-alive, ignore
+          if (msg.type === 'connected') {
+            if (msg.frame_count > 0) setPhase('connected');
+            return;
           }
-        }
-      } catch { /* network hiccup — keep polling */ }
-    }, POLL_MS);
+          if (msg.type === 'result') {
+            handleResult(msg);
+          }
+        } catch { /* malformed JSON — ignore */ }
+      };
 
-    return () => clearInterval(pollRef.current);
-  }, [sessionId, phase, onResult]);
+      ws.onerror = () => {
+        clearTimeout(fallbackTimer);
+        console.warn('[MobileQRPanel] WS error — falling back to polling');
+      };
+
+      ws.onclose = () => {
+        clearTimeout(fallbackTimer);
+        if (!dead) {
+          // Auto-reconnect after 3 s (handles proxy hiccups)
+          console.info('[MobileQRPanel] WS closed — reconnecting in 3s');
+          setTimeout(() => { if (!dead) connect(); }, 3000);
+        }
+      };
+    };
+
+    const startPolling = () => {
+      if (pollRef.current) return;   // already polling
+      setTransport('poll');
+      pollRef.current = setInterval(async () => {
+        try {
+          const res = await fetch(`${API_BASE}/mobile-result/${sidRef.current}`);
+          if (res.status === 404) {
+            setPhase('expired');
+            clearInterval(pollRef.current);
+            return;
+          }
+          handleResult(await res.json());
+        } catch { /* network hiccup — keep polling */ }
+      }, POLL_MS);
+    };
+
+    connect();
+
+    return () => {
+      dead = true;
+      clearTimeout(fallbackTimer);
+      ws?.close();
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    };
+  }, [sessionId, phase, handleResult]);
 
   // ── Copy URL to clipboard ─────────────────────────────────────────────────
   const [copied, setCopied] = useState(false);
@@ -287,7 +357,7 @@ export default function MobileQRPanel({ productType = 'PCB', onResult, onClose }
               animation: phase === 'connected' ? 'none' : 'pulse 1.5s ease-in-out infinite',
             }}/>
             {phase === 'connected'
-              ? `Connected · ${frameCount} frame${frameCount !== 1 ? 's' : ''} processed`
+              ? `Connected · ${frameCount} frame${frameCount !== 1 ? 's' : ''} · ${transport === 'ws' ? '⚡ Real-time' : '↺ Polling'}`
               : 'Waiting for phone connection…'}
           </div>
 

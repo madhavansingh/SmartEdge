@@ -6,6 +6,7 @@ import {
   Zap, HelpCircle, WifiOff, Upload, ImageIcon, Trash2, Smartphone, Cpu
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
+import { useAuth } from '../context/AuthContext';
 import MobileQRPanel from '../components/MobileQRPanel';
 import { speakText } from '../utils/elevenLabsTTS';
 import './InspectPage.css';
@@ -75,6 +76,7 @@ function hashDiff(a, b) {
 
 const InspectPage = () => {
   const { addScan, currentBatchId, startBatch, endBatch, batches, isDemoMode } = useSystem();
+  const { user } = useAuth();
 
   const [productType, setProductType]   = useState('PCB');
   const [isLive, setIsLive]             = useState(false);
@@ -471,6 +473,7 @@ const InspectPage = () => {
             <MobileQRPanel
               productType={productType}
               onClose={() => setShowMobilePanel(false)}
+              userEmail={user?.email || ''}
               onResult={(r) => {
                 setMobileConnected(true);
                 const newResult = {

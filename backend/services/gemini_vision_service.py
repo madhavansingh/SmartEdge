@@ -33,12 +33,12 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # ---------------------------------------------------------------------------
 
-GEMINI_API_KEY       = os.environ.get("GEMINI_API_KEY", "")
+from services.gemini_key_pool import gemini_key_pool
+
 GEMINI_MODEL         = "gemini-2.0-flash-lite"   # best free-tier rate limits
 
 RATE_LIMIT_SECONDS   = 3        # min gap per user  (matches frontend 3 s loop)
-RETRY_WAIT_SECONDS   = 2        # sleep before 1 retry on quota error
-MAX_RETRIES          = 1        # only 1 retry, then graceful fallback
+RETRY_WAIT_SECONDS   = 1        # sleep before trying next key on quota error
 CACHE_MAX_SIZE       = 128      # FIFO eviction
 
 # Tiered confidence thresholds
@@ -185,13 +185,14 @@ class GeminiVisionService:
             return
         self._initialized = True
 
-        if GEMINI_API_KEY:
-            self._client = genai.Client(api_key=GEMINI_API_KEY)
-            logger.info("GeminiVisionService: client ready, model='%s'.", GEMINI_MODEL)
+        if gemini_key_pool.key_count > 0:
+            logger.info(
+                "GeminiVisionService: key pool ready (%d key(s)), model='%s'.",
+                gemini_key_pool.key_count, GEMINI_MODEL,
+            )
         else:
-            self._client = None
             logger.warning(
-                "GeminiVisionService: GEMINI_API_KEY not set — "
+                "GeminiVisionService: no API keys in pool — "
                 "all requests will return UNCERTAIN."
             )
 
@@ -238,8 +239,8 @@ class GeminiVisionService:
                 }
 
             # ── Step 3: API key guard ──────────────────────────────────────
-            if self._client is None:
-                logger.error("[NO_API_KEY] Gemini client not initialised.")
+            if gemini_key_pool.key_count == 0:
+                logger.error("[NO_API_KEY] Gemini key pool is empty.")
                 return {
                     **_uncertain("Gemini API key not configured."),
                     "cached": False,
@@ -335,54 +336,66 @@ class GeminiVisionService:
 
     def _call_with_retry(self, image: PIL.Image.Image) -> Dict[str, Any]:
         """
-        Retry flow:
-          Attempt 1 → quota/rate error → sleep 2 s → Attempt 2
-          Attempt 2 → still fails → return UNCERTAIN (friendly message)
+        Tries each available key in the pool in round-robin order.
+        On quota / rate error: marks key as failed, immediately tries next key.
+        If all keys exhausted: returns graceful UNCERTAIN.
         """
-        for attempt in range(1, MAX_RETRIES + 2):
-            try:
-                result = self._call_gemini(image)
+        available = gemini_key_pool.available_count
+        if available == 0:
+            logger.error("[RETRY_EXHAUSTED] All keys are cooling down.")
+            return _uncertain("AI service busy — all keys quota-limited. Try again shortly.")
 
-                # Detect if the result itself signals a quota issue
+        attempts = max(available, 1)
+        for attempt in range(1, attempts + 1):
+            ck = gemini_key_pool.get_client()
+            if ck is None:
+                logger.error("[KEY_POOL] No available key on attempt %d.", attempt)
+                break
+
+            logger.info(
+                "[API_CALL] attempt %d/%d key=...%s",
+                attempt, attempts, ck.key[-4:],
+            )
+            try:
+                result = self._call_gemini_with_client(ck.client, image)
+
+                # Detect quota signal embedded in response text
                 reason_lower = result.get("reason", "").lower()
-                if (
-                    result.get("status") == "UNCERTAIN"
-                    and any(sig in reason_lower for sig in _QUOTA_SIGNALS)
-                    and attempt <= MAX_RETRIES
+                if result.get("status") == "UNCERTAIN" and any(
+                    sig in reason_lower for sig in _QUOTA_SIGNALS
                 ):
                     logger.warning(
-                        "[RETRY] Quota signal in response, attempt %d/%d — sleeping %ss.",
-                        attempt, MAX_RETRIES + 1, RETRY_WAIT_SECONDS,
+                        "[KEY_POOL] Quota signal in response — rotating key."
                     )
+                    ck.mark_failed()
                     time.sleep(RETRY_WAIT_SECONDS)
                     continue
 
+                ck.mark_ok()
                 return result
 
             except Exception as exc:
-                err_lower = str(exc).lower()
-                if any(sig in err_lower for sig in _QUOTA_SIGNALS) and attempt <= MAX_RETRIES:
+                if gemini_key_pool.is_quota_error(exc):
                     logger.warning(
-                        "[RETRY] Quota error attempt %d/%d: %s — sleeping %ss.",
-                        attempt, MAX_RETRIES + 1, exc, RETRY_WAIT_SECONDS,
+                        "[KEY_POOL] Quota error on key ...%s (attempt %d): %s — rotating.",
+                        ck.key[-4:], attempt, exc,
                     )
+                    ck.mark_failed()
                     time.sleep(RETRY_WAIT_SECONDS)
                     continue
 
-                logger.error("[API_ERROR] Gemini call failed (attempt %d): %s", attempt, exc)
-                # Return a friendly uncertain — never expose internal error text
+                # Non-quota error — don't rotate, just bail
+                logger.error("[API_ERROR] Non-quota Gemini error (attempt %d): %s", attempt, exc)
                 return _uncertain("Low confidence — please adjust camera and retry.")
 
-        logger.error("[RETRY_EXHAUSTED] All %d attempts failed.", MAX_RETRIES + 1)
-        return _uncertain("AI service busy — result unavailable. Please wait.")
+        logger.error("[RETRY_EXHAUSTED] All %d attempt(s) failed.", attempts)
+        return _uncertain("AI service busy — all keys quota-limited. Try again shortly.")
 
-    def _call_gemini(self, image: PIL.Image.Image) -> Dict[str, Any]:
+    def _call_gemini_with_client(self, client, image: PIL.Image.Image) -> Dict[str, Any]:
         """
-        Single Gemini Vision call.
-        Resizes image, sends prompt, parses JSON.
-        Does NOT catch exceptions — caller handles retry logic.
+        Single Gemini Vision call using the supplied client.
+        Does NOT catch exceptions — caller handles retry / key-rotation logic.
         """
-        # Resize to keep token cost low
         max_dim = 1024
         w, h = image.size
         if max(w, h) > max_dim:
@@ -391,7 +404,7 @@ class GeminiVisionService:
 
         rgb_image = image.convert("RGB")
 
-        response = self._client.models.generate_content(
+        response = client.models.generate_content(
             model=GEMINI_MODEL,
             contents=[INSPECTION_PROMPT, rgb_image],
             config=types.GenerateContentConfig(

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, Label,
@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import {
   TrendingUp, TrendingDown, CheckCircle2, XCircle, HelpCircle,
-  Cpu, RefreshCw, Activity, Zap, Timer, AlertOctagon,
+  Cpu, RefreshCw, Activity, Zap, Timer, AlertOctagon, Bell, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './DashboardPage.css';
@@ -142,6 +142,12 @@ const DashboardPage = () => {
   const [refresh, setRefresh] = useState(0);
   const [lastRefreshed, setLastRefreshed] = useState('');
 
+  // ── Alert state ─────────────────────────────────────────────────────────
+  const [alerts,         setAlerts]         = useState([]);
+  const [showAlertPanel, setShowAlertPanel] = useState(false);
+  const [alertDismissed, setAlertDismissed] = useState(false);
+  const seenAlertCount = useRef(0);
+
   // ── Fetch ───────────────────────────────────────────────────────────────
   const fetchData = useCallback(async (showLoading = false) => {
     if (showLoading) setLoading(true);
@@ -164,6 +170,24 @@ const DashboardPage = () => {
     const id = setInterval(() => fetchData(false), 5_000);
     return () => clearInterval(id);
   }, [fetchData, refresh]);
+
+  // ── Poll alert status every 10 s ─────────────────────────────────────────
+  useEffect(() => {
+    const pollAlerts = async () => {
+      try {
+        const res  = await fetch(`${API}/alert-status`);
+        const data = await res.json();
+        const list = data.alerts || [];
+        setAlerts(list);
+        if (list.length > seenAlertCount.current) {
+          setAlertDismissed(false);   // new alert — show banner again
+        }
+      } catch { /* backend offline */ }
+    };
+    pollAlerts();
+    const id = setInterval(pollAlerts, 10_000);
+    return () => clearInterval(id);
+  }, []);
 
   // ── Derived data ─────────────────────────────────────────────────────────
   const pieData = stats ? [
@@ -206,6 +230,96 @@ const DashboardPage = () => {
           </button>
         </div>
       </motion.div>
+
+      {/* ── Alert banner ─────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {alerts.length > 0 && !alertDismissed && (
+          <motion.div
+            key="alert-banner"
+            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            style={{
+              background: 'linear-gradient(135deg,#fef2f2,#fff1f2)',
+              border: '1.5px solid #fecaca', borderRadius: 12,
+              padding: '12px 18px', display: 'flex', alignItems: 'center',
+              gap: 12, marginBottom: 4,
+            }}
+          >
+            <AlertOctagon size={18} style={{ color: '#ef4444', flexShrink: 0 }} />
+            <div style={{ flex: 1, fontSize: '0.84rem', color: '#991b1b', fontWeight: 600 }}>
+              ⚠ Quality Alert — {alerts[0].issue_count} defects detected in 20 s window
+              <span style={{ fontWeight: 400, color: '#b91c1c', marginLeft: 10 }}>
+                · Email sent to {alerts[0].user_email} · {alerts[0].triggered_at}
+              </span>
+            </div>
+            <button
+              onClick={() => { setShowAlertPanel(p => !p); seenAlertCount.current = alerts.length; }}
+              style={{ background: '#fee2e2', border: 'none', borderRadius: 8,
+                       padding: '5px 12px', color: '#dc2626', fontWeight: 700,
+                       fontSize: '0.78rem', cursor: 'pointer' }}
+            >
+              {showAlertPanel ? 'Hide Log' : 'View Log'}
+            </button>
+            <button
+              onClick={() => { setAlertDismissed(true); seenAlertCount.current = alerts.length; }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 2 }}
+            >
+              <X size={15} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Alert log panel ──────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showAlertPanel && (
+          <motion.div
+            key="alert-panel"
+            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden', marginBottom: 12 }}
+          >
+            <div style={{ background: '#fff', border: '1.5px solid #fecaca',
+                          borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <Bell size={15} style={{ color: '#ef4444' }} />
+                <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0f172a',
+                               letterSpacing: '0.05em', textTransform: 'uppercase' }}>Alert History</span>
+                <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8' }}>
+                  Last {alerts.length} alert{alerts.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {alerts.map((a, i) => (
+                  <div key={i} style={{
+                    display: 'grid', gridTemplateColumns: '1fr 0.7fr 1.2fr 1.4fr auto',
+                    gap: '8px 14px', alignItems: 'center', padding: '10px 14px',
+                    borderRadius: 8, background: i === 0 ? '#fff5f5' : '#fafafa',
+                    border: '1px solid #f1f5f9', fontSize: '0.78rem',
+                  }}>
+                    <span style={{ color: '#0f172a', fontWeight: 600 }}>{a.triggered_at}</span>
+                    <span style={{ color: '#64748b' }}>{a.product_type}</span>
+                    <span>
+                      <span style={{ color: '#ef4444', fontWeight: 700 }}>{a.fail_count} FAIL</span>
+                      {' · '}
+                      <span style={{ color: '#f59e0b', fontWeight: 700 }}>{a.uncertain_count} UNC</span>
+                    </span>
+                    <span style={{ color: '#64748b', fontSize: '0.73rem' }}>{a.user_email}</span>
+                    <span style={{
+                      padding: '2px 8px', borderRadius: 20, fontWeight: 700, fontSize: '0.71rem',
+                      background: a.email_sent ? '#dcfce7' : '#fef9c3',
+                      color: a.email_sent ? '#16a34a' : '#92400e',
+                    }}>
+                      {a.email_sent ? '✉ Sent' : '⏳ Pending'}
+                    </span>
+                  </div>
+                ))}
+                {alerts.length === 0 && (
+                  <p style={{ color: '#94a3b8', fontSize: '0.8rem', margin: 0 }}>No alerts triggered yet.</p>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── KPI Cards ─ 6 cards ─────────────────────────────────────────── */}
       <div className="db-kpi-grid">
