@@ -48,33 +48,33 @@ Every scan result flows through a **multi-layer decision pipeline**: image quali
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      FRONTEND (React 19 + Vite)             │
-│  Landing → Login → Dashboard → Inspect → Reports → Profile  │
-│  Mobile Camera Page (QR-code linked, no auth required)      │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ REST / HTTP
-┌──────────────────────▼──────────────────────────────────────┐
-│                   FASTAPI BACKEND (Python)                   │
-│                                                             │
-│  /gemini-predict ──► Image Quality Scorer                   │
-│                      │                                      │
-│                      ▼                                      │
-│              Domain Classifier (OpenCV)                     │
-│           PCB ──────┬────── BISCUIT ──── AUTOMOTIVE         │
-│                     │                                       │
-│            confident?                                       │
-│            YES → CV Service (ResNet/OpenCV)                 │
-│            NO  → Gemini Vision (gemini-2.0-flash-lite)     │
-│                     │                                       │
-│              Decision Engine                                │
-│         (confidence floor + majority vote)                  │
-│                     │                                       │
-│           Scan Store (in-memory, 2000 cap)                  │
-│                     │                                       │
-│         Alert Service (sliding-window monitor)              │
-│         SMTP Email + PDF report on threshold breach         │
-└─────────────────────────────────────────────────────────────┘
+                        ┌─────────────────────────────────────────────────────────────┐
+                        │                  FRONTEND (React 19 + Vite)                 │
+                        │  Landing → Login → Dashboard → Inspect → Reports → Profile  │
+                        │  Mobile Camera Page (QR-code linked, no auth required)      │
+                        └──────────────────────┬──────────────────────────────────────┘
+                                               │ REST / HTTP
+                        ┌──────────────────────▼──────────────────────────────────────┐
+                        │                FASTAPI BACKEND (Python)                     │
+                        │                                                             │
+                        │  /gemini-predict ──► Image Quality Scorer                   │
+                        │                      │                                      │
+                        │                      ▼                                      │
+                        │              Domain Classifier (OpenCV)                     │
+                        │           PCB ──────┬────── BISCUIT ──── AUTOMOTIVE         │
+                        │                     │                                       │
+                        │            confident?                                       │
+                        │            YES → CV Service (ResNet/OpenCV)                 │
+                        │            NO  → Gemini Vision (gemini-2.0-flash-lite)      │
+                        │                     │                                       │
+                        │              Decision Engine                                │
+                        │         (confidence floor + majority vote)                  │
+                        │                     │                                       │
+                        │           Scan Store (in-memory, 2000 cap)                  │
+                        │                     │                                       │
+                        │         Alert Service (sliding-window monitor)              │
+                        │         SMTP Email + PDF report on threshold breach         │
+                        └─────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Design Decisions
